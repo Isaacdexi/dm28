@@ -38,9 +38,9 @@ jobs:
       - name: Commit files
         run: |
           git add Ecommerce.db
-          git commit -m "Add plots"
+          git commit -m "Add DB"
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
-            github_token: ${{ secrets.GROUP_28 }}
-            branch: master
+            github_token: ${{ secrets.DM_28 }}
+            branch: main
