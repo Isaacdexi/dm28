@@ -31,11 +31,13 @@ jobs:
           Rscript R/schema_validation_plots.R
       - name: Add files
         run: |
+          git config --local --unset-all "http.https://github.com/.extraheader"
           git config --global user.email "isaacchuadx@gmail.com"
           git config --global user.name "isaacdexi"
           git add --all figures/
       - name: Commit files
         run: |
+          git add Ecommerce.db
           git commit -m "Add DB"
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
