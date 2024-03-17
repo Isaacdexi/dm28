@@ -4,6 +4,7 @@ library(dplyr)
 library(DBI)
 library(ggplot2)
 library(stringr)
+library(lubridate)
 
 database <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = 'Ecommerce.db') #Establish a connection to the SQLite database
 
@@ -465,5 +466,181 @@ ggplot(country_sales[1:5, ], aes(x = reorder(customer_country, -total_sales), y 
 
 ## Top 5 Products by Number of Purchases
 
-## Top 5 Products by Conversion Rate
+# Query Order table and join with Product table to get product names
+top_products <- RSQLite::dbGetQuery(database, "
+  SELECT P.product_name, COUNT(*) AS purchase_count
+  FROM `Order` AS O
+  JOIN Product AS P ON O.product_id = P.product_id
+  GROUP BY P.product_name
+  ORDER BY purchase_count DESC
+  LIMIT 5
+")
+
+
+# Visualize the top 5 products by purchase count
+ggplot(top_products, aes(x = reorder(product_name, -purchase_count), y = purchase_count)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(x = "Product Name", y = "Purchase Count", title = "Top 5 Products by Purchase Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## Sales Conversion Rate by Purchased Products for Top 10 Products
+
+# Query top 10 products by views
+top_products <- RSQLite::dbGetQuery(database, "
+  SELECT product_id, product_name, product_views
+  FROM Product
+  ORDER BY product_views DESC
+  LIMIT 10
+")
+
+# Query total number of purchases for each of the top 10 products
+product_purchases <- RSQLite::dbGetQuery(database, "
+  SELECT O.product_id, COUNT(*) AS purchases
+  FROM `Order` AS O
+  WHERE O.product_id IN (SELECT product_id FROM Product ORDER BY product_views DESC LIMIT 10)
+  GROUP BY O.product_id
+")
+
+# Join product views and purchases
+product_conversion <- left_join(top_products, product_purchases, by = "product_id")
+
+# Calculate sales conversion rate (purchases / views) and handle NA values
+product_conversion <- mutate(product_conversion, conversion_rate = ifelse(is.na(purchases) | is.na(product_views), NA, purchases / product_views * 100))
+
+# Remove NA values
+product_conversion <- na.omit(product_conversion)
+
+# Visualize the sales conversion rates for top 10 products
+ggplot(product_conversion, aes(x = reorder(product_name, -conversion_rate), y = conversion_rate, fill = conversion_rate)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Product Name", y = "Sales Conversion Rate (%)", title = "Sales Conversion Rate by Purchased Products for Top 10 Products") +
+  scale_fill_gradient(low = "skyblue", high = "darkblue") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## Average orders and revenue by Country
+
+# Query the total revenue and count of orders by country
+country_orders_revenue <- RSQLite::dbGetQuery(database, "
+  SELECT C.customer_country,
+         COUNT(O.order_number) AS order_count,
+         SUM(O.quantity * P.price) AS total_revenue
+  FROM `Order` AS O
+  INNER JOIN Customer AS C ON O.customer_id = C.customer_id
+  INNER JOIN Product AS P ON O.product_id = P.product_id
+  GROUP BY C.customer_country
+")
+
+# Calculate the average order value for each country
+country_orders_revenue <- mutate(country_orders_revenue, average_order_value = total_revenue / order_count)
+
+# Visualize the average order value and total revenue by countries
+ggplot(country_orders_revenue, aes(x = reorder(customer_country, -total_revenue), y = total_revenue, fill = customer_country)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Country", y = "Total Revenue", title = "Total Revenue by Country", fill = "Country") +
+  scale_fill_brewer(palette = "Paired") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(country_orders_revenue, aes(x = reorder(customer_country, -average_order_value), y = average_order_value, fill = customer_country)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Country", y = "Average Order Value", title = "Average Order Value by Country", fill = "Country") +
+  scale_fill_brewer(palette = "Paired") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+##Rate of returning customer
+
+# Query the number of orders for each customer
+customer_order_count <- RSQLite::dbGetQuery(database, "
+  SELECT customer_id, COUNT(DISTINCT order_number) AS order_count
+  FROM `Order`
+  GROUP BY customer_id
+")
+
+# Calculate the number of returning customers
+returning_customers <- sum(customer_order_count$order_count > 1)
+
+# Calculate the total number of customers
+total_customers <- nrow(customer_order_count)
+
+# Calculate the returning customer rate
+returning_customer_rate <- (returning_customers / total_customers) * 100
+
+# Create a data frame for visualization
+data <- data.frame(
+  Customer_Status = c("Returning Customers", "New Customers"),
+  Count = c(returning_customers, total_customers - returning_customers)
+)
+
+# Visualize the returning customer rate using a pie chart
+ggplot(data, aes(x = "", y = Count, fill = Customer_Status)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  labs(fill = "Customer Status", title = "Returning Customer Rate") +
+  theme_void() +
+  theme(legend.position = "bottom")
+
+## Demographics and Platform Analysis
+
+# Query the platforms used by customers
+customer_platforms <- RSQLite::dbGetQuery(database, "
+  SELECT platform, COUNT(*) AS customer_count
+  FROM Customer
+  WHERE platform IS NOT NULL
+  GROUP BY platform
+")
+
+# Visualize the analysis
+ggplot(customer_platforms, aes(x = platform, y = customer_count)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(x = "Platform", y = "Number of Customers", title = "Number of Customers by Platform") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme_classic()
+
+## The effectiveness of discounts on product sales
+
+# Query discount effectiveness
+discount_analysis <- RSQLite::dbGetQuery(database, "
+  SELECT D.discount_percentage, COUNT(*) AS order_count
+  FROM Discount AS D
+  INNER JOIN `Order` AS O ON D.product_id = O.product_id
+  GROUP BY D.discount_percentage
+")
+
+# Visualize the results
+ggplot(discount_analysis, aes(x = discount_percentage, y = order_count)) +
+  geom_bar(stat = "identity", fill = "pink") +
+  labs(x = "Discount Percentage", y = "Number of Orders", title = "Effectiveness of Discounts on Orders") +
+  theme_classic()
+
+## Number of orders refunds by month
+
+# Query refunded orders with order dates and extract month directly in SQL
+refund_by_month <- RSQLite::dbGetQuery(database, "
+  SELECT strftime('%Y-%m', O.order_date) AS month,
+         COUNT(*) AS refund_count
+  FROM `Order` AS O
+  INNER JOIN Shipment AS S ON O.order_number = S.order_number
+  WHERE S.refund = 'Yes'
+  GROUP BY month
+")
+
+# Convert month to Date type
+refund_by_month$month <- ymd(paste(refund_by_month$month, "-01", sep = "-"))
+
+# Convert month labels to abbreviated month names
+refund_by_month$month <- format(refund_by_month$month, "%b")
+
+# Set the order of months
+months_order <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+refund_by_month$month <- factor(refund_by_month$month, levels = months_order)
+
+# Visualize the number of refunds by month
+ggplot(refund_by_month, aes(x = month, y = refund_count)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(x = "Month", y = "Number of Orders Refunds", title = "Refunds by Month") +
+  theme_classic()
+
+
 print("The ggplot plot has been printed in RStudio.")
+
+
+
