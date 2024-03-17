@@ -1,0 +1,18 @@
+category_id,p_category_id,cat_name,cat_description
+c01,NULL,Electronics,Explore the latest in cutting-edge technology with our electronic gadgets and devices.
+c02,NULL,Home and Kitchen,Enhance your living spaces with our stylish and functional home and kitchen products.
+c03,NULL,Sports and Outdoors,Gear up for outdoor adventures with our high-quality sports and outdoor equipment.
+c04,NULL,Clothing and Accessories,Stay on trend with our fashionable clothing and accessories for all occasions.
+c05,NULL,Beauty and Personal Care,Discover a world of beauty and personal care products to enhance your self-care routine.
+c06,NULL,Health and Wellness,Prioritize your well-being with our selection of health and wellness essentials.
+c07,NULL,Toys and Games,Entertain and educate with our fun and exciting toys and games for all ages.
+c08,NULL,Automotive,Keep your vehicle running smoothly with our automotive parts and accessories.
+c09,NULL,Books and Literature,Immerse yourself in captivating stories and knowledge with our diverse collection of books.
+c10,NULL,Garden and Outdoor,Create a lush and inviting outdoor space with our gardening and outdoor living products.
+c11,pc01,Sportswear,Elevate your active lifestyle with our stylish and high-performance sportswear.
+c12,pc02,Jewelry,Adorn yourself with exquisite jewelry that complements your unique style.
+c13,pc03,Skincare,Indulge in luxurious skincare products designed to nourish and rejuvenate your skin.
+c14,pc04,Health Supplements,Boost your health and vitality with our premium selection of health supplements.
+c15,pc05,Board Games,Gather friends and family for memorable game nights with our exciting board game collection.
+c16,pc06,Car Engine Products,Enhance the performance and longevity of your vehicle with our high-quality Car Engine Products.
+c17,pc07,Gardening Tools,Transform your garden into a vibrant oasis with our premium Gardening Tools collection.
