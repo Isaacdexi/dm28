@@ -33,7 +33,7 @@ jobs:
         run: |
           git config --local --unset-all "http.https://github.com/.extraheader"
           git config --global user.email "isaacchuadx@gmail.com"
-          git config --global user.name "isaacdexi"
+          git config --global user.name "Isaacdexi"
           git add --all figures/
       - name: Commit files
         run: |
