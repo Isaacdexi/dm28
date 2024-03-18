@@ -17,7 +17,7 @@ compare_and_update_database_cust <- function(old_csv, new_csv, table_name, prima
   added_rows <- anti_join(new_data, old_data, by = primary_key)
   
   if (nrow(added_rows) == 0) {
-    print("No differences found between the old and new data. No updates needed.\n")
+    print("No differences found between the old and new data in Customer Table. No updates needed.\n")
     return(NULL)
   }
   
@@ -58,7 +58,7 @@ compare_and_update_database_prod <- function(old_csv, new_csv, table_name, prima
   added_rows <- anti_join(new_data, old_data, by = primary_key)
   
   if (nrow(added_rows) == 0) {
-    print("No differences found between the old and new data in Customer Table. No updates needed.\n")
+    print("No differences found between the old and new data in Product Table. No updates needed.\n")
     return(NULL)
   }
   
