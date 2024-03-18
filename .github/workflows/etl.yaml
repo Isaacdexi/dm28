@@ -35,6 +35,10 @@ jobs:
       - name: Execute R script
         run: |
           Rscript R/schema_validation_plots.R
+          
+      - name: Execute R script New Data Load
+        run: |
+          Rscript R/new_data_load.R
 
       - name: Add files
         run: |
