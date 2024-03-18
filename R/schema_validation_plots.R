@@ -107,7 +107,7 @@ if(dbExistsTable(database, "Shipment")){
 dbExecute(database,"CREATE TABLE 'Shipment' ( 
   'shipment_id' TEXT PRIMARY KEY,
   'shipment_delay_days' INT NOT NULL, 
-  'shipment_cost' INT NOT NULL,  
+  'shipment_cost' DECIMAL(10,2) NOT NULL,  
   'order_number' TEXT NOT NULL,
   'refund' TEXT NOT NULL,
   FOREIGN KEY ('order_number') REFERENCES `Order` ('order_number')
@@ -131,18 +131,37 @@ dbExecute(database,"CREATE TABLE 'Sellers' (
 
 # loading of data
 
-Customer <- readr::read_csv("Dataset/fake_customer_data.csv")
-Category <- readr::read_csv("Dataset/fake_category_data.csv")
-Sellers <- readr::read_csv("Dataset/fake_seller_data.csv")
-Product <- readr::read_csv("Dataset/fake_product_data.csv")
-Discount <- readr::read_csv("Dataset/fake_discount_data.csv")
-Shipment <- readr::read_csv("Dataset/fake_shipment_data.csv")
-Order <- readr::read_csv("Dataset/fake_order_data.csv")
+Customer <- readr::read_csv("fake_customer_data_test.csv")
+Category <- readr::read_csv("fake_category_data.csv")
+Sellers <- readr::read_csv("fake_seller_data.csv")
+Product <- readr::read_csv("fake_product_data.csv")
+Discount <- readr::read_csv("fake_discount_data.csv")
+Shipment <- readr::read_csv("fake_shipment_data.csv")
+Order <- readr::read_csv("fake_order_data.csv")
 
 # Validation
 
 ## Validation for customer data
 
+# Function to check if a datetime is in the desired format ("%Y-%m-%d %H:%M:%S")
+is_datetime_format <- function(datetime_string) {
+  tryCatch({
+    as.POSIXlt(datetime_string, format = "%Y-%m-%d %H:%M:%S")
+    TRUE
+  }, error = function(e) {
+    FALSE
+  })
+}
+
+# Check if dates are in the desired format, if not, convert them
+for (i in 1:nrow(Customer)) {
+  if (!is_datetime_format(Customer$date_of_birth[i])) {
+    Customer$date_of_birth[i] <- as.POSIXct(Customer$date_of_birth[i], format = "%Y-%m-%d %H:%M:%S")
+  }
+}
+
+
+# Perform the rest of the validation checks
 missing_values <- apply(is.na(Customer), 2, sum)
 
 # Check unique customer IDs
@@ -208,26 +227,66 @@ if (!any(is.na(missing_values)) &&
     length(invalid_phone_indices) == 0 &&
     length(invalid_zip_indices) == 0 &&
     all(Customer$platform %in% valid_platforms)) {
-  print("Data is valid.")
+  print("Customer Data is valid. Loading data into the database...")
+  RSQLite::dbWriteTable(database, "Customer", Customer, append = TRUE)
   # Load the data into the database
 } else {
   print("Data is not valid. Please correct the errors.")
 }
 
+
 ## Validation for discount data
 
+# Function to check if date is in the desired format
+is_datetime_format <- function(x) {
+  tryCatch({
+    as.POSIXlt(x, format = "%Y-%m-%d %H:%M:%S")
+    TRUE
+  }, error = function(e) {
+    FALSE
+  })
+}
+
+# Convert discount_start_date and discount_end_date to desired format if not already in that format
+if (!all(sapply(Discount$discount_start_date, is_datetime_format))) {
+  Discount$discount_start_date <- as.POSIXlt(Discount$discount_start_date, format = "%Y-%m-%d %H:%M:%S")
+}
+
+if (!all(sapply(Discount$discount_end_date, is_datetime_format))) {
+  Discount$discount_end_date <- as.POSIXlt(Discount$discount_end_date, format = "%Y-%m-%d %H:%M:%S")
+}
+
+# Check for missing values in Discount dataframe
 na_disc <- apply(is.na(Discount), 2, sum)
 
+# Validate discount_percentage, discount_start_date, and discount_end_date data types
+valid_decimal <- function(x) {
+  !is.na(as.numeric(x))
+}
+
+valid_datetime <- function(x) {
+  !is.na(as.POSIXlt(x))
+}
+
 # Check discount percentage range (assuming it's between 0 and 100)
-if (any(Discount$discount_percentage < 0 | Discount$discount_percentage > 100)) {
+if (any(Discount$discount_percentage < 0 | Discount$discount_percentage > 100) ||
+    !all(sapply(Discount$discount_percentage, valid_decimal))) {
   print("Invalid discount percentage.")
 }
 
 # Check discount dates
-if (any(Discount$discount_start_date >= Discount$discount_end_date)) {
+if (any(Discount$discount_start_date >= Discount$discount_end_date) ||
+    !all(sapply(Discount$discount_start_date, valid_datetime)) ||
+    !all(sapply(Discount$discount_end_date, valid_datetime))) {
   print("Discount start date should be before the end date.")
 }
 
+# Check if discount_id is unique
+if (any(duplicated(Discount$discount_id))) {
+  print("Duplicate discount IDs found.")
+}
+
+# Check if product_id exists in Product table
 if (any(!Discount$product_id %in% Product$product_id)) {
   print("Invalid product IDs. Some product IDs do not exist in the Product table.")
 }
@@ -236,12 +295,18 @@ if (any(!Discount$product_id %in% Product$product_id)) {
 if (!any(is.na(na_disc)) && 
     all(Discount$discount_percentage >= 0 & Discount$discount_percentage <= 100) &&
     all(Discount$discount_start_date < Discount$discount_end_date) &&
-    all(Discount$product_id %in% Product$product_id)) {
-  print("Discount data is valid.")
+    !any(duplicated(Discount$discount_id)) &&
+    all(Discount$product_id %in% Product$product_id) &&
+    all(sapply(Discount$discount_percentage, valid_decimal)) &&
+    all(sapply(Discount$discount_start_date, valid_datetime)) &&
+    all(sapply(Discount$discount_end_date, valid_datetime))) {
+  print("Discount data is valid. Loading data into the database...")
+  RSQLite::dbWriteTable(database, "Discount", Discount, append = TRUE)
   # Load the data into the database
 } else {
-  print("Discount data is not valid. Please correct the errors.")
+  print("Data is not valid. Please correct the errors.")
 }
+
 
 ## Validation for order data
 
@@ -257,14 +322,24 @@ if (any(Order$customer_rating < 1 | Order$customer_rating > 5)) {
   print("Invalid customer rating.")
 }
 
+# Check if product_id exists in Product table
 if (any(!Order$product_id %in% Product$product_id)) {
   print("Invalid product IDs. Some product IDs do not exist in the Product table.")
 }
+
+# Check if customer_id exists in Customer table
 if (any(!Order$customer_id %in% Customer$customer_id)) {
   print("Invalid customer IDs. Some customer IDs do not exist in the Customer table.")
 }
+
+# Check if shipment_id exists in Shipment table
 if (any(!Order$shipment_id %in% Shipment$shipment_id)) {
   print("Invalid shipment IDs. Some shipment IDs do not exist in the Shipment table.")
+}
+
+# Check uniqueness based on primary key (order_number, customer_id, product_id)
+if (any(duplicated(Order[c("order_number", "customer_id", "product_id")]))) {
+  print("Duplicate records found based on order_number, customer_id, and product_id.")
 }
 
 # If no errors are found, print a message indicating that the data is valid
@@ -273,8 +348,10 @@ if (!any(is.na(na_order)) &&
     all(Order$customer_rating >= 1 & Order$customer_rating <= 5)&&
     all(Order$product_id %in% Product$product_id) &&
     all(Order$customer_id %in% Customer$customer_id) &&
-    all(Order$shipment_id %in% Shipment$shipment_id)) {
-  print("Order data is valid.")
+    all(Order$shipment_id %in% Shipment$shipment_id) &&
+    !any(duplicated(Order[c("order_number", "customer_id", "product_id")]))) {
+  print("Order data is valid. Loading data into the database...")
+  RSQLite::dbWriteTable(database, "Order", Order, append = TRUE)
   # Load the data into the database
 } else {
   print("Order data is not valid. Please correct the errors.")
@@ -308,13 +385,22 @@ if (!any(is.na(na_prod_cat)) &&
     all(sapply(Category$category_id, is.character)) &&
     all(sapply(Category$cat_name, is.character)) &&
     all(sapply(Category$cat_description, is.character))) {
-  print("product_category data is valid.")
+  print("product_category data is valid. Loading data into the database...")
+  RSQLite::dbWriteTable(database, "Category", Category, append = TRUE)
   # Load the data into the database
 } else {
   print("product_category data is not valid. Please correct the errors.")
 }
 
-## Validation of products data
+# Function to check if a value is decimal
+valid_decimal <- function(x) {
+  !is.na(as.numeric(x))
+}
+
+# Function to check if a value is an integer
+valid_integer <- function(x) {
+  !is.na(as.integer(x))
+}
 
 na_Product <- apply(is.na(Product), 2, sum)
 
@@ -331,8 +417,19 @@ if (any(nchar(Product$product_name) > 255)) {
 if (any(!Product$category_id %in% Category$category_id)) {
   print("Invalid category IDs. Some category IDs do not exist in the product_category table.")
 }
+
 if (any(!Product$seller_id %in% Sellers$seller_id)) {
   print("Invalid seller IDs. Some seller IDs do not exist in the Sellers table.")
+}
+
+# Check if inventory and product views are integers
+if (any(!sapply(Product$inventory, valid_integer)) || any(!sapply(Product$product_views, valid_integer))) {
+  print("Inventory and product views should be integers.")
+}
+
+# Check if price and weight are decimal
+if (any(!sapply(Product$price, valid_decimal)) || any(!sapply(Product$weight, valid_decimal))) {
+  print("Price and weight should be decimal values.")
 }
 
 # If no errors are found, print a message indicating that the data is valid
@@ -340,12 +437,18 @@ if (!any(is.na(na_Product)) &&
     length(unique(Product$product_id)) == nrow(Product) &&
     !any(nchar(Product$product_name) > 255) &&
     all(Product$category_id %in% Category$category_id) &&
-    all(Product$seller_id %in% Sellers$seller_id)) {
-  print("Product data is valid.")
+    all(Product$seller_id %in% Sellers$seller_id) &&
+    all(sapply(Product$inventory, valid_integer)) &&
+    all(sapply(Product$product_views, valid_integer)) &&
+    all(sapply(Product$price, valid_decimal)) &&
+    all(sapply(Product$weight, valid_decimal))) {
+  print("Product data is valid. Loading data into the database...")
+  RSQLite::dbWriteTable(database, "Product", Product, append = TRUE)
   # Load the data into the database
 } else {
   print("Product data is not valid. Please correct the errors.")
 }
+
 
 ## Validation of Seller Data
 library(stringr)
@@ -373,7 +476,8 @@ if (!any(is.na(na_sellers)) &&
     length(unique(Sellers$seller_id)) == nrow(Sellers) &&
     !any(nchar(Sellers$company_name) > 100) &&
     length(invalid_emails) == 0) {
-  print("Sellers data is valid.")
+  print("Sellers data is valid. Loading data into the database...")
+  RSQLite::dbWriteTable(database, "Sellers", Sellers, append = TRUE)
   # Load the data into the database
 } else {
   print("Sellers data is not valid. Please correct the errors.")
@@ -399,6 +503,11 @@ if (any(Shipment$shipment_delay_days <= 0) || any(Shipment$shipment_cost <= 0)) 
   print("shipment_delay_days and shipment_cost should be positive numbers.")
 }
 
+# Ensure that "shipment_delay_days" is an integer
+if (any(!as.integer(Shipment$shipment_delay_days) == Shipment$shipment_delay_days)) {
+  print("shipment_delay_days should be integers.")
+}
+
 # Ensure that all "order_number" values exist in the "Order" table
 order_numbers <- unique(Shipment$order_number)
 if (!all(order_numbers %in% Order$order_number)) {
@@ -411,20 +520,14 @@ if (all(na_shipment == 0) &&
     all(Shipment$refund %in% valid_refunds) &&
     all(Shipment$shipment_delay_days > 0) &&
     all(Shipment$shipment_cost > 0) &&
+    all(as.integer(Shipment$shipment_delay_days) == Shipment$shipment_delay_days) &&
     all(order_numbers %in% Order$order_number)) {
-  print("Shipment data is valid.")
+  print("Shipment data is valid. Loading data to database ...")
+  RSQLite::dbWriteTable(database, "Shipment",Shipment, append = TRUE)
   # Load the data into the database
 } else {
   print("Shipment data is not valid. Please correct the errors.")
 }
-
-
-RSQLite::dbWriteTable(database,"Customer",Customer,append=TRUE)
-RSQLite::dbWriteTable(database,"Product",Product,append=TRUE)
-RSQLite::dbWriteTable(database,"Discount",Discount,append=TRUE)
-RSQLite::dbWriteTable(database,"Shipment",Shipment,append=TRUE)
-RSQLite::dbWriteTable(database,"Category",Category,append=TRUE)
-RSQLite::dbWriteTable(database,"Order",Order,append=TRUE)
 
 # data analysis
 
