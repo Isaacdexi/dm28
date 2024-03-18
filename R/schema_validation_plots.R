@@ -640,7 +640,7 @@ ggplot(refund_by_month, aes(x = month, y = refund_count)) +
   theme_classic()
 
 
-print("The ggplot plot has been printed in RStudio.")
+print("Message Checked: The ggplot plot has been printed in RStudio.")
 
 
 
