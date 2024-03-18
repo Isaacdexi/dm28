@@ -131,13 +131,13 @@ dbExecute(database,"CREATE TABLE 'Sellers' (
 
 # loading of data
 
-Customer <- readr::read_csv("fake_customer_data_test.csv")
-Category <- readr::read_csv("fake_category_data.csv")
-Sellers <- readr::read_csv("fake_seller_data.csv")
-Product <- readr::read_csv("fake_product_data.csv")
-Discount <- readr::read_csv("fake_discount_data.csv")
-Shipment <- readr::read_csv("fake_shipment_data.csv")
-Order <- readr::read_csv("fake_order_data.csv")
+Customer <- readr::read_csv("Dataset/fake_customer_data.csv")
+Category <- readr::read_csv("Dataset/fake_category_data.csv")
+Sellers <- readr::read_csv("Dataset/fake_seller_data.csv")
+Product <- readr::read_csv("Dataset/fake_product_data.csv")
+Discount <- readr::read_csv("Dataset/fake_discount_data.csv")
+Shipment <- readr::read_csv("Dataset/fake_shipment_data.csv")
+Order <- readr::read_csv("Dataset/fake_order_data.csv")
 
 # Validation
 
@@ -234,6 +234,132 @@ if (!any(is.na(missing_values)) &&
   print("Data is not valid. Please correct the errors.")
 }
 
+## Validation of Seller Data
+library(stringr)
+na_sellers <- apply(is.na(Sellers), 2, sum)
+
+# Ensure "seller_Id" values are unique
+if (length(unique(Sellers$seller_id)) != nrow(Sellers)) {
+  print("seller_Id values are not unique.")
+}
+
+# Check length of "company_name"
+if (any(nchar(Sellers$company_name) > 100)) {
+  print("company_name exceeds 100 characters.")
+}
+
+# Check email format
+invalid_emails <- which(!str_detect(Sellers$supplier_email, "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"))
+if (length(invalid_emails) > 0) {
+  print("Invalid email addresses:")
+  print(Sellers[invalid_emails, ])
+}
+
+# If no errors are found, print a message indicating that the data is valid
+if (!any(is.na(na_sellers)) &&
+    length(unique(Sellers$seller_id)) == nrow(Sellers) &&
+    !any(nchar(Sellers$company_name) > 100) &&
+    length(invalid_emails) == 0) {
+  print("Sellers data is valid. Loading data into the database...")
+  RSQLite::dbWriteTable(database, "Sellers", Sellers, append = TRUE)
+  # Load the data into the database
+} else {
+  print("Sellers data is not valid. Please correct the errors.")
+}
+
+## Validation for product category data
+
+na_prod_cat <- apply(is.na(Category), 2, sum)
+
+# Ensure "category_id" values are unique
+if (length(unique(Category$category_id)) != nrow(Category)) {
+  print("category_id values are not unique.")
+}
+
+# Check length of "cat_name"
+if (any(nchar(Category$cat_name) > 255)) {
+  print("cat_name exceeds 255 characters.")
+}
+
+# Check data type of each column
+if (!all(sapply(Category$category_id, is.character)) ||
+    !all(sapply(Category$cat_name, is.character)) ||
+    !all(sapply(Category$cat_description, is.character))) {
+  print("Invalid data type for one or more columns.")
+}
+
+# If no errors are found, print a message indicating that the data is valid
+if (!any(is.na(na_prod_cat)) &&
+    length(unique(Category$category_id)) == nrow(Category) &&
+    !any(nchar(Category$cat_name) > 255) &&
+    all(sapply(Category$category_id, is.character)) &&
+    all(sapply(Category$cat_name, is.character)) &&
+    all(sapply(Category$cat_description, is.character))) {
+  print("product_category data is valid. Loading data into the database...")
+  RSQLite::dbWriteTable(database, "Category", Category, append = TRUE)
+  # Load the data into the database
+} else {
+  print("product_category data is not valid. Please correct the errors.")
+}
+
+## Product
+
+# Function to check if a value is decimal
+valid_decimal <- function(x) {
+  !is.na(as.numeric(x))
+}
+
+# Function to check if a value is an integer
+valid_integer <- function(x) {
+  !is.na(as.integer(x))
+}
+
+na_Product <- apply(is.na(Product), 2, sum)
+
+# Ensure "product_id" values are unique
+if (length(unique(Product$product_id)) != nrow(Product)) {
+  print("product_id values are not unique.")
+}
+
+# Check length of "product_name"
+if (any(nchar(Product$product_name) > 255)) {
+  print("product_name exceeds 255 characters.")
+}
+
+if (any(!Product$category_id %in% Category$category_id)) {
+  print("Invalid category IDs. Some category IDs do not exist in the product_category table.")
+}
+
+if (any(!Product$seller_id %in% Sellers$seller_id)) {
+  print("Invalid seller IDs. Some seller IDs do not exist in the Sellers table.")
+}
+
+# Check if inventory and product views are integers
+if (any(!sapply(Product$inventory, valid_integer)) || any(!sapply(Product$product_views, valid_integer))) {
+  print("Inventory and product views should be integers.")
+}
+
+# Check if price and weight are decimal
+if (any(!sapply(Product$price, valid_decimal)) || any(!sapply(Product$weight, valid_decimal))) {
+  print("Price and weight should be decimal values.")
+}
+
+# If no errors are found, print a message indicating that the data is valid
+if (!any(is.na(na_Product)) &&
+    length(unique(Product$product_id)) == nrow(Product) &&
+    !any(nchar(Product$product_name) > 255) &&
+    all(Product$category_id %in% Category$category_id) &&
+    all(Product$seller_id %in% Sellers$seller_id) &&
+    all(sapply(Product$inventory, valid_integer)) &&
+    all(sapply(Product$product_views, valid_integer)) &&
+    all(sapply(Product$price, valid_decimal)) &&
+    all(sapply(Product$weight, valid_decimal))) {
+  print("Product data is valid. Loading data into the database...")
+  RSQLite::dbWriteTable(database, "Product", Product, append = TRUE)
+  # Load the data into the database
+} else {
+  print("Product data is not valid. Please correct the errors.")
+}
 
 ## Validation for discount data
 
@@ -307,7 +433,6 @@ if (!any(is.na(na_disc)) &&
   print("Data is not valid. Please correct the errors.")
 }
 
-
 ## Validation for order data
 
 na_order <- apply(is.na(Order), 2, sum)
@@ -342,6 +467,12 @@ if (any(duplicated(Order[c("order_number", "customer_id", "product_id")]))) {
   print("Duplicate records found based on order_number, customer_id, and product_id.")
 }
 
+# Check order date format and range
+if (any(!is_datetime_format(Order$order_date))) {
+  # Convert order date to the desired format if not already
+  Order$order_date <- as.POSIXct(Order$order_date, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+}
+
 # If no errors are found, print a message indicating that the data is valid
 if (!any(is.na(na_order)) && 
     all(Order$quantity > 0) &&
@@ -349,138 +480,13 @@ if (!any(is.na(na_order)) &&
     all(Order$product_id %in% Product$product_id) &&
     all(Order$customer_id %in% Customer$customer_id) &&
     all(Order$shipment_id %in% Shipment$shipment_id) &&
-    !any(duplicated(Order[c("order_number", "customer_id", "product_id")]))) {
+    !any(duplicated(Order[c("order_number", "customer_id", "product_id")])) &&
+    all(is_datetime_format(Order$order_date))) {
   print("Order data is valid. Loading data into the database...")
   RSQLite::dbWriteTable(database, "Order", Order, append = TRUE)
   # Load the data into the database
 } else {
   print("Order data is not valid. Please correct the errors.")
-}
-
-## Validation for product category data
-
-na_prod_cat <- apply(is.na(Category), 2, sum)
-
-# Ensure "category_id" values are unique
-if (length(unique(Category$category_id)) != nrow(Category)) {
-  print("category_id values are not unique.")
-}
-
-# Check length of "cat_name"
-if (any(nchar(Category$cat_name) > 255)) {
-  print("cat_name exceeds 255 characters.")
-}
-
-# Check data type of each column
-if (!all(sapply(Category$category_id, is.character)) ||
-    !all(sapply(Category$cat_name, is.character)) ||
-    !all(sapply(Category$cat_description, is.character))) {
-  print("Invalid data type for one or more columns.")
-}
-
-# If no errors are found, print a message indicating that the data is valid
-if (!any(is.na(na_prod_cat)) &&
-    length(unique(Category$category_id)) == nrow(Category) &&
-    !any(nchar(Category$cat_name) > 255) &&
-    all(sapply(Category$category_id, is.character)) &&
-    all(sapply(Category$cat_name, is.character)) &&
-    all(sapply(Category$cat_description, is.character))) {
-  print("product_category data is valid. Loading data into the database...")
-  RSQLite::dbWriteTable(database, "Category", Category, append = TRUE)
-  # Load the data into the database
-} else {
-  print("product_category data is not valid. Please correct the errors.")
-}
-
-# Function to check if a value is decimal
-valid_decimal <- function(x) {
-  !is.na(as.numeric(x))
-}
-
-# Function to check if a value is an integer
-valid_integer <- function(x) {
-  !is.na(as.integer(x))
-}
-
-na_Product <- apply(is.na(Product), 2, sum)
-
-# Ensure "product_id" values are unique
-if (length(unique(Product$product_id)) != nrow(Product)) {
-  print("product_id values are not unique.")
-}
-
-# Check length of "product_name"
-if (any(nchar(Product$product_name) > 255)) {
-  print("product_name exceeds 255 characters.")
-}
-
-if (any(!Product$category_id %in% Category$category_id)) {
-  print("Invalid category IDs. Some category IDs do not exist in the product_category table.")
-}
-
-if (any(!Product$seller_id %in% Sellers$seller_id)) {
-  print("Invalid seller IDs. Some seller IDs do not exist in the Sellers table.")
-}
-
-# Check if inventory and product views are integers
-if (any(!sapply(Product$inventory, valid_integer)) || any(!sapply(Product$product_views, valid_integer))) {
-  print("Inventory and product views should be integers.")
-}
-
-# Check if price and weight are decimal
-if (any(!sapply(Product$price, valid_decimal)) || any(!sapply(Product$weight, valid_decimal))) {
-  print("Price and weight should be decimal values.")
-}
-
-# If no errors are found, print a message indicating that the data is valid
-if (!any(is.na(na_Product)) &&
-    length(unique(Product$product_id)) == nrow(Product) &&
-    !any(nchar(Product$product_name) > 255) &&
-    all(Product$category_id %in% Category$category_id) &&
-    all(Product$seller_id %in% Sellers$seller_id) &&
-    all(sapply(Product$inventory, valid_integer)) &&
-    all(sapply(Product$product_views, valid_integer)) &&
-    all(sapply(Product$price, valid_decimal)) &&
-    all(sapply(Product$weight, valid_decimal))) {
-  print("Product data is valid. Loading data into the database...")
-  RSQLite::dbWriteTable(database, "Product", Product, append = TRUE)
-  # Load the data into the database
-} else {
-  print("Product data is not valid. Please correct the errors.")
-}
-
-
-## Validation of Seller Data
-library(stringr)
-na_sellers <- apply(is.na(Sellers), 2, sum)
-
-# Ensure "seller_Id" values are unique
-if (length(unique(Sellers$seller_id)) != nrow(Sellers)) {
-  print("seller_Id values are not unique.")
-}
-
-# Check length of "company_name"
-if (any(nchar(Sellers$company_name) > 100)) {
-  print("company_name exceeds 100 characters.")
-}
-
-# Check email format
-invalid_emails <- which(!str_detect(Sellers$supplier_email, "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"))
-if (length(invalid_emails) > 0) {
-  print("Invalid email addresses:")
-  print(Sellers[invalid_emails, ])
-}
-
-# If no errors are found, print a message indicating that the data is valid
-if (!any(is.na(na_sellers)) &&
-    length(unique(Sellers$seller_id)) == nrow(Sellers) &&
-    !any(nchar(Sellers$company_name) > 100) &&
-    length(invalid_emails) == 0) {
-  print("Sellers data is valid. Loading data into the database...")
-  RSQLite::dbWriteTable(database, "Sellers", Sellers, append = TRUE)
-  # Load the data into the database
-} else {
-  print("Sellers data is not valid. Please correct the errors.")
 }
 
 # Validation for Shipment Data
