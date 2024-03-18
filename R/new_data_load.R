@@ -6,6 +6,14 @@ library(ggplot2)
 library(stringr)
 library(lubridate)
 
+Customer <- readr::read_csv("Dataset/fake_customer_data.csv")
+Category <- readr::read_csv("Dataset/fake_category_data.csv")
+Sellers <- readr::read_csv("Dataset/fake_seller_data.csv")
+Product <- readr::read_csv("Dataset/fake_product_data.csv")
+Discount <- readr::read_csv("Dataset/fake_discount_data.csv")
+Shipment <- readr::read_csv("Dataset/fake_shipment_data.csv")
+Order <- readr::read_csv("Dataset/fake_order_data.csv")
+
 ## Customer
 
 compare_and_update_database_cust <- function(old_csv, new_csv, table_name, primary_key) {
