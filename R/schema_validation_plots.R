@@ -121,7 +121,7 @@ if(dbExistsTable(database, "Sellers")){
 }
 
 dbExecute(database,"CREATE TABLE 'Sellers' (
-    'seller_Id' TEXT PRIMARY KEY,
+    'seller_id' TEXT PRIMARY KEY,
     'company_name' VARCHAR(100) NOT NULL ,
     'supplier_phone' VARCHAR(20) NOT NULL,
     'supplier_email' VARCHAR(100) NOT NULL UNIQUE,
@@ -131,13 +131,13 @@ dbExecute(database,"CREATE TABLE 'Sellers' (
 
 # loading of data
 
-Customer <- readr::read_csv("Dataset/fake_customer_data.csv")
-Category <- readr::read_csv("Dataset/fake_category_data.csv")
-Sellers <- readr::read_csv("Dataset/fake_seller_data.csv")
-Product <- readr::read_csv("Dataset/fake_product_data.csv")
-Discount <- readr::read_csv("Dataset/fake_discount_data.csv")
-Shipment <- readr::read_csv("Dataset/fake_shipment_data.csv")
-Order <- readr::read_csv("Dataset/fake_order_data.csv")
+Customer <- readr::read_csv("Dataset/customer.csv")
+Category <- readr::read_csv("Dataset/category.csv")
+Sellers <- readr::read_csv("Dataset/seller.csv")
+Product <- readr::read_csv("Dataset/product.csv")
+Discount <- readr::read_csv("Dataset/discount.csv")
+Shipment <- readr::read_csv("Dataset/shipment.csv")
+Order <- readr::read_csv("Dataset/order.csv")
 
 # Validation
 
@@ -707,7 +707,8 @@ ggplot(customer_platforms, aes(x = platform, y = customer_count)) +
 ## The effectiveness of discounts on product sales
 
 # Query discount effectiveness
-discount_analysis <- RSQLite::dbGetQuery(database, "
+# Query discount effectiveness
+discount_analysis <- dbGetQuery(database, "
   SELECT D.discount_percentage, COUNT(*) AS order_count
   FROM Discount AS D
   INNER JOIN `Order` AS O ON D.product_id = O.product_id
@@ -716,9 +717,10 @@ discount_analysis <- RSQLite::dbGetQuery(database, "
 
 # Visualize the results
 ggplot(discount_analysis, aes(x = discount_percentage, y = order_count)) +
-  geom_bar(stat = "identity", fill = "pink") +
+  geom_line(group=1, color = "blue") +
+  geom_point(color = "blue") +
   labs(x = "Discount Percentage", y = "Number of Orders", title = "Effectiveness of Discounts on Orders") +
-  theme_classic()
+  theme_minimal()
 
 ## Number of orders refunds by month
 

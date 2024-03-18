@@ -6,13 +6,13 @@ library(ggplot2)
 library(stringr)
 library(lubridate)
 
-Customer <- readr::read_csv("Dataset/fake_customer_data.csv")
-Category <- readr::read_csv("Dataset/fake_category_data.csv")
-Sellers <- readr::read_csv("Dataset/fake_seller_data.csv")
-Product <- readr::read_csv("Dataset/fake_product_data.csv")
-Discount <- readr::read_csv("Dataset/fake_discount_data.csv")
-Shipment <- readr::read_csv("Dataset/fake_shipment_data.csv")
-Order <- readr::read_csv("Dataset/fake_order_data.csv")
+Customer <- readr::read_csv("Dataset/customer.csv")
+Category <- readr::read_csv("Dataset/category.csv")
+Sellers <- readr::read_csv("Dataset/seller.csv")
+Product <- readr::read_csv("Dataset/product.csv")
+Discount <- readr::read_csv("Dataset/discount.csv")
+Shipment <- readr::read_csv("Dataset/shipment.csv")
+Order <- readr::read_csv("Dataset/order.csv")
 
 ## Customer
 
@@ -130,7 +130,7 @@ compare_and_update_database_cust <- function(old_csv, new_csv, table_name, prima
 }
 
 # Usage example
-compare_and_update_database_cust("Dataset/fake_customer_data.csv", "DatasetTest/fake_customer_data_test_new_records.csv", "Customer", "customer_id")
+compare_and_update_database_cust("Dataset/customer.csv", "DatasetTest/customer_data_test_new_records.csv", "Customer", "customer_id")
 
 ## Seller
 
@@ -203,7 +203,7 @@ compare_and_update_database_seller <- function(old_csv, new_csv, table_name, pri
 }
 
 # Usage example
-compare_and_update_database_seller("Dataset/fake_seller_data.csv", "DatasetTest/fake_seller_data_test_new_records.csv", "Sellers", "seller_id")
+compare_and_update_database_seller("Dataset/seller.csv", "DatasetTest/seller_data_test_new_records.csv", "Sellers", "seller_id")
 
 ## Category
 
@@ -274,7 +274,7 @@ compare_and_update_database_category <- function(old_csv, new_csv, table_name, p
   dbDisconnect(database)
 }
 
-compare_and_update_database_category("Dataset/fake_category_data.csv", "DatasetTest/fake_category_data_no_new.csv", "Category", "category_id")
+compare_and_update_database_category("Dataset/category.csv", "DatasetTest/category_data_no_new.csv", "Category", "category_id")
 
 ## Product
 
@@ -358,7 +358,7 @@ compare_and_update_database_prod <- function(old_csv, new_csv, table_name, prima
   dbDisconnect(database)
 }
 # Usage example
-compare_and_update_database_prod("Dataset/fake_product_data.csv", "DatasetTest/fake_product_data_test_no_new.csv", "Product", "product_id")
+compare_and_update_database_prod("Dataset/product.csv", "DatasetTest/product_data_test_no_new.csv", "Product", "product_id")
 
 ## Discount
 
@@ -460,7 +460,7 @@ compare_and_update_database_discount <- function(old_csv, new_csv, table_name, p
 }
 
 # Usage example
-compare_and_update_database_discount("Dataset/fake_discount_data.csv", "DatasetTest/fake_discount_data_no_new.csv", "Discount", "discount_id")
+compare_and_update_database_discount("Dataset/discount.csv", "DatasetTest/discount_data_no_new.csv", "Discount", "discount_id")
 
 ## Order
 
@@ -553,7 +553,7 @@ compare_and_update_database_order <- function(old_csv, new_csv, table_name, prim
 }
 
 # Usage example
-compare_and_update_database_order("Dataset/fake_order_data.csv", "DatasetTest/fake_order_data_test_no_new.csv", "order", c("order_number", "product_id"))
+compare_and_update_database_order("Dataset/order.csv", "DatasetTest/order_data_test_no_new.csv", "order", c("order_number", "product_id"))
 
 
 ## Shipment Data
@@ -636,7 +636,7 @@ compare_and_update_database_shipment <- function(old_csv, new_csv, table_name, p
 }
 
 # Usage example
-compare_and_update_database_shipment("Dataset/fake_shipment_data.csv", "DatasetTest/fake_shipment_data_no_new.csv", "Shipment", "shipment_id")
+compare_and_update_database_shipment("Dataset/shipment.csv", "DatasetTest/shipment_data_no_new.csv", "Shipment", "shipment_id")
 
 
 
